@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Quizzy – live quiz</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E🎯%3C/text%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#f4f1fb;--surface:#ffffff;--text:#1d1830;--muted:#6b6483;--border:#ddd6ee;
+  --accent:#46178f;--accent-text:#ffffff;--ok:#1f8a3a;--bad:#c62839;
+  --c0:#e21b3c;--c1:#1368ce;--c2:#b97f00;--c3:#26890c;
+  color-scheme:light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#140f22;--surface:#201a33;--text:#f1edfb;--muted:#a79fc0;--border:#352c52;
+    --accent:#a47bff;--accent-text:#140f22;--ok:#4cc46a;--bad:#ff6b7a;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#140f22;--surface:#201a33;--text:#f1edfb;--muted:#a79fc0;--border:#352c52;
+  --accent:#a47bff;--accent-text:#140f22;--ok:#4cc46a;--bad:#ff6b7a;
+  color-scheme:dark;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+html,body{min-height:100%}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;line-height:1.4}
+.wrap{max-width:760px;margin:0 auto;padding:16px}
+header.top{display:flex;align-items:center;gap:10px;margin:6px 0 16px}
+header.top .logo{font-size:1.8rem}
+header.top h1{font-size:1.4rem;margin:0}
+header.top .sub{color:var(--muted);font-size:.9rem}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px;margin-bottom:14px}
+.card h2{margin:0 0 10px;font-size:1.15rem}
+.muted{color:var(--muted)}
+.btn{border:0;border-radius:12px;padding:14px 18px;font:inherit;font-weight:700;background:var(--accent);color:var(--accent-text);cursor:pointer}
+.btn.sec{background:transparent;color:var(--text);border:1px solid var(--border)}
+.btn.big{width:100%;padding:16px;font-size:1.1rem}
+.btn:disabled{opacity:.5;cursor:default}
+.row-btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+input,textarea,select{width:100%;box-sizing:border-box;padding:12px;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--text);font:inherit}
+textarea{resize:vertical;min-height:60px}
+label.f{display:block;font-weight:600;margin:10px 0 6px}
+.err{background:color-mix(in srgb,var(--bad) 14%,transparent);border:1px solid var(--bad);color:var(--text);padding:10px 12px;border-radius:10px;margin-bottom:12px}
+.note{background:color-mix(in srgb,var(--ok) 14%,transparent);border:1px solid var(--ok);padding:10px 12px;border-radius:10px;margin-bottom:12px}
+.pin{font-size:clamp(2.4rem,13vw,4.6rem);font-weight:800;letter-spacing:.12em;text-align:center;margin:6px 0}
+.qtext{font-size:clamp(1.3rem,5vw,1.9rem);font-weight:800;text-align:center;margin:8px 0 16px}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:420px){.tiles.stack{grid-template-columns:1fr}}
+.tile{border:0;border-radius:14px;padding:16px 12px;min-height:84px;font:inherit;font-size:1.1rem;font-weight:700;color:#fff;display:flex;align-items:center;gap:10px;text-align:left;cursor:pointer;box-sizing:border-box;width:100%}
+div.tile{cursor:default}
+.tile[data-i="0"]{background:var(--c0)}
+.tile[data-i="1"]{background:var(--c1)}
+.tile[data-i="2"]{background:var(--c2)}
+.tile[data-i="3"]{background:var(--c3)}
+.tile .sh{font-size:1.5rem;width:1.6rem;text-align:center;flex:none}
+.tile .tx{flex:1;overflow-wrap:anywhere}
+.tile .ct{font-size:1.4rem}
+.tile.dim{opacity:.3}
+.tile.right{outline:4px solid var(--text);outline-offset:2px}
+.tile.picked{outline:4px solid var(--text);outline-offset:2px}
+.tile:disabled{cursor:default}
+.tbar{height:10px;background:var(--border);border-radius:99px;overflow:hidden;margin:6px 0 4px}
+.tbar>i{display:block;height:100%;background:var(--accent);width:100%}
+.timer{font-size:2.2rem;font-weight:800;text-align:center}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{background:var(--bg);border:1px solid var(--border);border-radius:99px;padding:6px 12px;font-weight:600}
+.lb .r{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)}
+.lb .r:last-child{border-bottom:0}
+.lb .rk{width:2rem;font-weight:800;color:var(--muted)}
+.lb .nm{flex:1;overflow-wrap:anywhere;font-weight:600}
+.lb .sc{font-weight:800}
+.lb .dl{color:var(--ok);font-size:.85rem;min-width:3.5rem;text-align:right}
+.big-msg{text-align:center;padding:26px 8px}
+.big-msg .em{font-size:3rem}
+.big-msg h2{font-size:1.6rem;margin:8px 0}
+.qcard{border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:12px;background:var(--surface)}
+.opt{display:flex;align-items:center;gap:8px;margin-top:8px}
+.opt .badge{flex:none;width:2.2rem;height:2.2rem;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.1rem}
+.opt .badge[data-i="0"]{background:var(--c0)}
+.opt .badge[data-i="1"]{background:var(--c1)}
+.opt .badge[data-i="2"]{background:var(--c2)}
+.opt .badge[data-i="3"]{background:var(--c3)}
+.opt input[type=radio]{width:auto;flex:none;transform:scale(1.3);accent-color:var(--accent)}
+.opt input[type=text]{flex:1}
+.qhead{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.qhead select{width:auto}
+.small{font-size:.85rem}
+.pod{display:flex;justify-content:center;align-items:flex-end;gap:10px;margin:10px 0 16px}
+.pod .p{flex:1;max-width:180px;text-align:center;background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:10px 6px}
+.pod .p .m{font-size:2rem}
+.pod .p.first{padding-top:26px}
+</style>
+</head>
+<body>
+<div class="wrap"><div id="app"></div></div>
+<noscript>Deze quiz heeft JavaScript nodig.</noscript>
+<script>
+(function(){
+'use strict';
+var app=document.getElementById('app');
+var SHAPES=['▲','◆','●','■'];
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+var store={
+  get:function(k){try{return localStorage.getItem(k);}catch(e){return null;}},
+  set:function(k,v){try{localStorage.setItem(k,v);}catch(e){}},
+  del:function(k){try{localStorage.removeItem(k);}catch(e){}}
+};
+
+var S={conn:false,view:'home',st:null,stAt:0,quiz:null,pinIn:'',nameIn:store.get('qz_name')||'',pwIn:'',err:'',note:'',busy:false,expired:false,lastQ:'',pending:null,isHost:false};
+var ws=null,backoff=500;
+
+function blankQ(){return {q:'',o:['','','',''],c:0,t:20};}
+function sampleQuiz(){
+  return {title:'Mijn eerste quiz',questions:[
+    {q:'Hoeveel provincies heeft Nederland?',o:['10','11','12','13'],c:2,t:20},
+    {q:'Welke planeet staat het dichtst bij de zon?',o:['Venus','Mars','Mercurius','Aarde'],c:2,t:20},
+    {q:'Wat is de grootste oceaan ter wereld?',o:['Atlantische Oceaan','Indische Oceaan','Grote Oceaan','Noordelijke IJszee'],c:2,t:20},
+    {q:'Hoeveel is 7 × 8?',o:['54','56','58','64'],c:1,t:20},
+    {q:'Welk landdier is het snelst?',o:['Leeuw','Paard','Jachtluipaard','Gazelle'],c:2,t:20}
+  ]};
+}
+function normalizeQuiz(q){
+  if(!q||!Array.isArray(q.questions)||!q.questions.length)return null;
+  var out={title:String(q.title||''),questions:[]};
+  q.questions.forEach(function(x){
+    var o=Array.isArray(x.o)?x.o.slice(0,4).map(String):[];
+    while(o.length<4)o.push('');
+    out.questions.push({q:String(x.q||''),o:o,c:Math.min(3,Math.max(0,+x.c||0)),t:[10,20,30,60].indexOf(+x.t)>=0?+x.t:20});
+  });
+  return out;
+}
+
+/* ---------- verbinding ---------- */
+function send(o){if(ws&&ws.readyState===1){ws.send(JSON.stringify(o));return true;}return false;}
+function connect(){
+  var proto=location.protocol==='https:'?'wss':'ws';
+  ws=new WebSocket(proto+'://'+location.host);
+  ws.onopen=function(){
+    S.conn=true;backoff=500;S.err='';
+    var h=store.get('qz_host'),p=store.get('qz_play');
+    if(h){try{h=JSON.parse(h);send({t:'hostResume',pin:h.pin,hostToken:h.token});}catch(e){store.del('qz_host');}}
+    else if(p){try{p=JSON.parse(p);send({t:'join',pin:p.pin,token:p.token,name:p.name});}catch(e){store.del('qz_play');}}
+    render();
+  };
+  ws.onmessage=function(ev){var m;try{m=JSON.parse(ev.data);}catch(e){return;}onMsg(m);};
+  ws.onclose=function(){S.conn=false;render();setTimeout(connect,backoff);backoff=Math.min(backoff*2,8000);};
+}
+function onMsg(m){
+  S.busy=false;
+  switch(m.t){
+    case 'error':
+      S.err=m.msg||'Er ging iets mis.';
+      if(m.code==='nogame'){store.del('qz_host');store.del('qz_play');S.st=null;if(S.view==='host'||S.view==='play')S.view='home';}
+      break;
+    case 'hostOk':S.isHost=true;S.quiz=normalizeQuiz(m.quiz)||sampleQuiz();S.view='editor';S.err='';break;
+    case 'saved':S.quiz=normalizeQuiz(m.quiz)||S.quiz;S.note=m.ok?'Quiz opgeslagen.':'Opslaan op de server is mislukt.';break;
+    case 'hosting':store.set('qz_host',JSON.stringify({pin:m.pin,token:m.hostToken}));store.del('qz_play');S.view='host';S.isHost=true;break;
+    case 'joined':store.set('qz_play',JSON.stringify({pin:m.pin,token:m.token,name:m.name}));store.set('qz_name',m.name);S.view='play';S.err='';break;
+    case 'state':
+      S.st=m;S.stAt=Date.now();
+      if(m.status==='question'){var k=m.qi+':'+m.role;if(k!==S.lastQ){S.lastQ=k;S.expired=false;S.pending=null;}}
+      break;
+    case 'closed':
+      store.del('qz_host');store.del('qz_play');S.st=null;S.view='home';S.note='Het spel is afgesloten.';break;
+  }
+  render();
+}
+
+/* ---------- onderdelen ---------- */
+function hdr(sub){return '<header class="top"><div class="logo">🎯</div><div><h1>Quizzy</h1>'+(sub?'<div class="sub">'+esc(sub)+'</div>':'')+'</div></header>';}
+function msgs(){
+  var h='';
+  if(!S.conn)h+='<div class="err" role="alert">Verbinding maken… even geduld.</div>';
+  if(S.err)h+='<div class="err" role="alert">'+esc(S.err)+'</div>';
+  if(S.note)h+='<div class="note" role="status">'+esc(S.note)+'</div>';
+  return h;
+}
+function lb(board,n,showDelta){
+  if(!board||!board.length)return '<p class="muted">Nog geen scores.</p>';
+  var arr=n?board.slice(0,n):board;
+  return '<div class="lb">'+arr.map(function(r,i){
+    return '<div class="r"><span class="rk">'+(i+1)+'</span><span class="nm">'+esc(r.n)+'</span>'+
+      (showDelta?'<span class="dl">'+(r.d>0?'+'+r.d:'')+'</span>':'')+'<span class="sc">'+r.s+'</span></div>';
+  }).join('')+'</div>';
+}
+function podium(board){
+  var a=(board||[]).slice(0,3);if(!a.length)return '';
+  var med=['🥇','🥈','🥉'],order=a.length>=3?[1,0,2]:(a.length===2?[1,0]:[0]);
+  return '<div class="pod">'+order.map(function(i){
+    return '<div class="p'+(i===0?' first':'')+'"><div class="m">'+med[i]+'</div><div><b>'+esc(a[i].n)+'</b></div><div class="muted">'+a[i].s+'</div></div>';
+  }).join('')+'</div>';
+}
+function tilesHtml(st,dist){
+  return '<div class="tiles">'+st.q.o.map(function(o,i){
+    var cls='tile',inner='<span class="sh">'+SHAPES[i]+'</span><span class="tx">'+esc(o)+'</span>';
+    if(dist){cls+=(i===st.correct?' right':' dim');inner+='<span class="ct">'+(st.dist&&st.dist[i]?st.dist[i]:0)+'</span>';}
+    return '<div class="'+cls+'" data-i="'+i+'">'+inner+'</div>';
+  }).join('')+'</div>';
+}
+
+/* ---------- schermen ---------- */
+function screenHome(){
+  var h=hdr('Live quiz voor een groep')+msgs();
+  h+='<div class="card"><h2>Meedoen</h2>';
+  h+='<label class="f" for="pin">Pincode</label><input id="pin" data-bind="pin" inputmode="numeric" autocomplete="off" maxlength="6" placeholder="6 cijfers" value="'+esc(S.pinIn)+'">';
+  h+='<label class="f" for="nm">Jouw naam</label><input id="nm" data-bind="name" autocomplete="nickname" maxlength="20" placeholder="Bijvoorbeeld Sam" value="'+esc(S.nameIn)+'">';
+  h+='<div class="row-btns"><button class="btn big" data-act="join"'+(S.busy||!S.conn?' disabled':'')+'>Doe mee</button></div></div>';
+  h+='<p class="muted small" style="text-align:center"><a href="#" data-act="hostlogin" style="color:inherit">Quiz hosten</a></p>';
+  return h;
+}
+function screenHostLogin(){
+  return hdr('Host inloggen')+msgs()+'<div class="card"><label class="f" for="pw">Host-wachtwoord</label>'+
+    '<input id="pw" type="password" data-bind="pw" autocomplete="current-password" value="'+esc(S.pwIn)+'">'+
+    '<div class="row-btns"><button class="btn" data-act="login"'+(S.conn?'':' disabled')+'>Inloggen</button><button class="btn sec" data-act="home">Terug</button></div></div>';
+}
+function screenEditor(){
+  var qz=S.quiz,h=hdr('Quiz bewerken')+msgs();
+  h+='<div class="card"><label class="f" for="ttl">Titel van de quiz</label><input id="ttl" data-bind="title" maxlength="80" value="'+esc(qz.title)+'"></div>';
+  qz.questions.forEach(function(q,i){
+    h+='<div class="qcard"><div class="qhead"><b>Vraag '+(i+1)+'</b><span>';
+    h+='<select data-bind="t" data-i="'+i+'" aria-label="Tijd">'+[10,20,30,60].map(function(t){return '<option value="'+t+'"'+(q.t===t?' selected':'')+'>'+t+' sec</option>';}).join('')+'</select> ';
+    h+='<button class="btn sec" data-act="delq" data-i="'+i+'" aria-label="Verwijder vraag"'+(qz.questions.length<2?' disabled':'')+'>🗑</button></span></div>';
+    h+='<textarea data-bind="q" data-i="'+i+'" placeholder="Typ je vraag" aria-label="Vraag" maxlength="200">'+esc(q.q)+'</textarea>';
+    h+='<div class="muted small" style="margin-top:8px">Kies met het bolletje welk antwoord goed is. Laat een antwoord leeg als je minder dan 4 opties wilt.</div>';
+    for(var j=0;j<4;j++){
+      h+='<div class="opt"><span class="badge" data-i="'+j+'">'+SHAPES[j]+'</span>'+
+        '<input type="text" data-bind="o" data-i="'+i+'" data-j="'+j+'" maxlength="80" placeholder="Antwoord '+(j+1)+'" value="'+esc(q.o[j])+'" aria-label="Antwoord '+(j+1)+'">'+
+        '<input type="radio" name="c'+i+'" data-bind="c" data-i="'+i+'" data-j="'+j+'"'+(q.c===j?' checked':'')+' aria-label="Goed antwoord"></div>';
+    }
+    h+='</div>';
+  });
+  h+='<div class="row-btns"><button class="btn sec" data-act="addq">+ Vraag toevoegen</button></div>';
+  h+='<div class="row-btns"><button class="btn sec" data-act="save">Opslaan</button><button class="btn" data-act="create"'+(S.busy?' disabled':'')+'>Start spel</button><button class="btn sec" data-act="home">Terug</button></div>';
+  return h;
+}
+function screenHost(){
+  var st=S.st;
+  if(!st||st.role!=='host')return hdr('')+msgs()+'<div class="card big-msg"><div class="em">⏳</div><p class="muted">Spel laden…</p></div>';
+  var h=hdr('Host · '+st.title)+msgs(),n=st.players.length;
+  if(st.status==='lobby'){
+    h+='<div class="card"><div class="muted" style="text-align:center">Ga naar <b>'+esc(location.host)+'</b> en gebruik pincode</div><div class="pin">'+esc(st.pin)+'</div></div>';
+    h+='<div class="card"><h2>Spelers ('+n+')</h2>'+(n?'<div class="chips">'+st.players.map(function(p){return '<span class="chip">'+esc(p)+'</span>';}).join('')+'</div>':'<p class="muted">Wachten op spelers…</p>')+'</div>';
+    h+='<div class="row-btns"><button class="btn big" data-act="start"'+(n?'':' disabled')+'>Start de quiz</button></div>';
+    h+='<div class="row-btns"><button class="btn sec" data-act="close">Spel annuleren</button></div>';
+  }else if(st.status==='question'){
+    h+='<div class="card"><div class="muted">Vraag '+(st.qi+1)+' van '+st.total+'</div><div class="qtext">'+esc(st.q.q)+'</div>'+
+      '<div class="timer" id="tl">'+st.q.t+'</div><div class="tbar"><i id="tb"></i></div>'+
+      '<p class="muted" style="text-align:center">Beantwoord: <b>'+st.answered+'</b> van '+n+'</p>'+tilesHtml(st,false)+'</div>';
+    h+='<div class="row-btns"><button class="btn" data-act="reveal">Toon antwoord</button></div>';
+  }else if(st.status==='reveal'){
+    h+='<div class="card"><div class="muted">Vraag '+(st.qi+1)+' van '+st.total+'</div><div class="qtext">'+esc(st.q.q)+'</div>'+tilesHtml(st,true)+'</div>';
+    h+='<div class="card"><h2>Tussenstand</h2>'+lb(st.board,5,true)+'</div>';
+    h+='<div class="row-btns"><button class="btn big" data-act="next">'+(st.last?'Toon eindstand':'Volgende vraag')+'</button></div>';
+  }else{
+    h+='<div class="card"><h2>🏆 Eindstand</h2>'+podium(st.board)+lb(st.board,0,false)+'</div>';
+    h+='<div class="row-btns"><button class="btn" data-act="close">Spel afsluiten</button></div>';
+  }
+  return h;
+}
+function screenPlay(){
+  var st=S.st;
+  if(!st||st.role!=='player')return hdr('')+msgs()+'<div class="card big-msg"><div class="em">⏳</div><p class="muted">Verbinden met het spel…</p></div>';
+  var h=hdr(st.title)+msgs();
+  if(st.status==='lobby'){
+    h+='<div class="card big-msg"><div class="em">🎉</div><h2>Je zit erin, '+esc(st.name)+'!</h2><p class="muted">Wachten tot de host de quiz start…</p></div>';
+  }else if(st.status==='question'){
+    var choice=st.choice!=null?st.choice:S.pending;
+    h+='<div class="card"><div class="muted" style="text-align:center">Vraag '+(st.qi+1)+' van '+st.total+'</div><div class="qtext">'+esc(st.q.q)+'</div>'+
+      '<div class="timer" id="tl">'+st.q.t+'</div><div class="tbar"><i id="tb"></i></div></div>';
+    if(choice!=null){
+      h+='<div class="tiles stack">'+st.q.o.map(function(o,i){
+        return '<div class="tile'+(i===choice?' picked':' dim')+'" data-i="'+i+'"><span class="sh">'+SHAPES[i]+'</span><span class="tx">'+esc(o)+'</span></div>';
+      }).join('')+'</div><p class="muted" style="text-align:center;margin-top:12px">Antwoord ingestuurd. Wachten op de rest…</p>';
+    }else if(S.expired){
+      h+='<div class="card big-msg"><div class="em">⏰</div><h2>Tijd is om</h2><p class="muted">Wachten op het antwoord…</p></div>';
+    }else{
+      h+='<div class="tiles stack">'+st.q.o.map(function(o,i){
+        return '<button class="tile" data-act="answer" data-i="'+i+'"><span class="sh">'+SHAPES[i]+'</span><span class="tx">'+esc(o)+'</span></button>';
+      }).join('')+'</div>';
+    }
+  }else if(st.status==='reveal'){
+    var em,title;
+    if(st.choice==null){em='⏰';title='Geen antwoord';}
+    else if(st.ok){em='✅';title='Goed zo! +'+st.delta;}
+    else{em='❌';title='Helaas, fout';}
+    h+='<div class="card big-msg"><div class="em">'+em+'</div><h2>'+esc(title)+'</h2>'+
+      '<p>Goed antwoord: <b>'+esc(st.q.o[st.correct])+'</b></p>'+
+      '<p class="muted">Jouw score: <b>'+st.score+'</b> · plek '+st.rank+' van '+st.of+'</p>'+
+      '<p class="muted">Wachten op de volgende vraag…</p></div>';
+  }else{
+    h+='<div class="card big-msg"><div class="em">🏆</div><h2>Einde van de quiz</h2><p>Jij werd <b>nummer '+st.rank+'</b> met <b>'+st.score+'</b> punten.</p></div>';
+    h+='<div class="card"><h2>Top 5</h2>'+lb(st.board,5,false)+'</div>';
+    h+='<div class="row-btns"><button class="btn" data-act="leave">Naar start</button></div>';
+  }
+  if(st.status!=='finished')h+='<div class="row-btns" style="margin-top:18px"><button class="btn sec" data-act="leave">Spel verlaten</button></div>';
+  return h;
+}
+function render(){
+  var h;
+  if(S.view==='hostlogin')h=screenHostLogin();
+  else if(S.view==='editor'&&S.quiz)h=screenEditor();
+  else if(S.view==='host')h=screenHost();
+  else if(S.view==='play')h=screenPlay();
+  else h=screenHome();
+  app.innerHTML=h;
+  tick(true);
+}
+
+/* ---------- timer ---------- */
+function setTimerUI(left,total){
+  var tl=document.getElementById('tl'),tb=document.getElementById('tb');
+  if(tl)tl.textContent=Math.max(0,Math.ceil(left));
+  if(tb)tb.style.width=Math.max(0,Math.min(100,left/total*100))+'%';
+}
+function tick(uiOnly){
+  var st=S.st;
+  if(!st||st.status!=='question')return;
+  var total=st.q.t,left=(st.left-(Date.now()-S.stAt))/1000;
+  setTimerUI(left,total);
+  if(uiOnly===true)return;
+  if(st.role==='player'&&left<=0&&st.choice==null&&S.pending==null&&!S.expired){S.expired=true;render();}
+}
+setInterval(function(){tick(false);},250);
+
+/* ---------- events ---------- */
+function leave(){
+  store.del('qz_play');store.del('qz_host');
+  send({t:'leave'});
+  S.st=null;S.view='home';S.err='';
+  if(ws)try{ws.close();}catch(e){}
+  render();
+}
+app.addEventListener('click',function(e){
+  var b=e.target.closest('[data-act]');
+  if(!b||b.disabled)return;
+  e.preventDefault();
+  var a=b.getAttribute('data-act'),i=+b.getAttribute('data-i');
+  S.err='';S.note='';
+  switch(a){
+    case 'join':
+      if(S.pinIn.length!==6){S.err='Voer een pincode van 6 cijfers in.';render();break;}
+      if(!S.nameIn.trim()){S.err='Vul een naam in.';render();break;}
+      S.busy=true;store.del('qz_play');send({t:'join',pin:S.pinIn,name:S.nameIn.trim()});render();break;
+    case 'hostlogin':S.view='hostlogin';render();break;
+    case 'login':S.busy=true;send({t:'hostAuth',pw:S.pwIn});S.pwIn='';render();break;
+    case 'addq':S.quiz.questions.push(blankQ());render();break;
+    case 'delq':S.quiz.questions.splice(i,1);render();break;
+    case 'save':send({t:'saveQuiz',quiz:S.quiz});break;
+    case 'create':S.busy=true;send({t:'create',quiz:S.quiz});render();break;
+    case 'start':send({t:'start'});break;
+    case 'next':send({t:'next'});break;
+    case 'reveal':send({t:'reveal'});break;
+    case 'close':send({t:'close'});break;
+    case 'answer':
+      if(S.pending==null&&S.st&&S.st.choice==null){S.pending=i;send({t:'answer',c:i});render();}break;
+    case 'leave':leave();break;
+    case 'home':S.view='home';render();break;
+  }
+});
+function onInput(e){
+  var el=e.target,k=el.getAttribute&&el.getAttribute('data-bind');
+  if(!k)return;
+  var i=+el.getAttribute('data-i'),j=+el.getAttribute('data-j');
+  if(k==='pin'){S.pinIn=el.value.replace(/\D/g,'').slice(0,6);if(el.value!==S.pinIn)el.value=S.pinIn;}
+  else if(k==='name'){S.nameIn=el.value.slice(0,20);}
+  else if(k==='pw'){S.pwIn=el.value;}
+  else if(!S.quiz){return;}
+  else if(k==='title'){S.quiz.title=el.value;}
+  else if(k==='q'){S.quiz.questions[i].q=el.value;}
+  else if(k==='o'){S.quiz.questions[i].o[j]=el.value;}
+  else if(k==='c'){if(el.checked)S.quiz.questions[i].c=j;}
+  else if(k==='t'){S.quiz.questions[i].t=+el.value;}
+}
+app.addEventListener('input',onInput);
+app.addEventListener('change',onInput);
+app.addEventListener('keydown',function(e){
+  if(e.key!=='Enter')return;
+  var k=e.target.getAttribute&&e.target.getAttribute('data-bind');
+  if(k==='pw'){var b=app.querySelector('[data-act=login]');if(b)b.click();}
+  if(k==='pin'||k==='name'){var j=app.querySelector('[data-act=join]');if(j)j.click();}
+});
+
+render();
+connect();
+})();
+</script>
+</body>
+</html>
