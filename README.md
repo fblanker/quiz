@@ -10,7 +10,7 @@ npm install
 HOST_PASSWORD=kies-een-wachtwoord npm start
 ```
 
-Open daarna http://localhost:3000
+Open daarna http://localhost:8080
 
 - **Spelers:** pincode + naam invullen op de startpagina.
 - **Host:** klik onderaan op *Quiz hosten*, log in met het host-wachtwoord, maak je vragen en druk op *Start spel*.
@@ -22,7 +22,7 @@ Zonder `HOST_PASSWORD` verzint de server een tijdelijk wachtwoord en toont dat i
 | Variabele | Betekenis | Standaard |
 |---|---|---|
 | `HOST_PASSWORD` | Wachtwoord om te kunnen hosten | willekeurig (zie console) |
-| `PORT` | Poort van de server | 3000 |
+| `PORT` | Poort van de server | 8080 |
 | `DATA_DIR` | Map waar de opgeslagen quiz staat (`quiz.json`) | `./data` |
 | `MAX_PLAYERS` | Maximaal aantal spelers per spel | 300 |
 | `ALLOWED_ORIGIN` | Alleen verbindingen vanaf deze origin toestaan, bv. `https://quiz.jouwdomein.nl` | uit |
@@ -34,12 +34,12 @@ shared-hosting werkt meestal **niet**. Goede opties:
 
 - **Render, Railway, Fly.io of een eigen VPS:** koppel de map of een Git-repo, startcommando `npm start`,
   zet `HOST_PASSWORD` als omgevingsvariabele. Deze diensten geven je automatisch https.
-- **Docker:** `docker build -t quizzy .` en `docker run -p 3000:3000 -e HOST_PASSWORD=... quizzy`
+- **Docker:** `docker build -t quizzy .` en `docker run -p 8080:8080 -e HOST_PASSWORD=... quizzy`
 - **VPS met nginx:** zet de app achter een reverse proxy met https en geef WebSocket-headers door:
 
 ```nginx
 location / {
-  proxy_pass http://127.0.0.1:3000;
+  proxy_pass http://127.0.0.1:8080;
   proxy_http_version 1.1;
   proxy_set_header Upgrade $http_upgrade;
   proxy_set_header Connection "upgrade";

@@ -10,7 +10,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { WebSocketServer } = require('ws');
 
-const PORT = Number(process.env.PORT) || 3000;
+const PORT = Number(process.env.PORT) || 8080;
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const QUIZ_FILE = path.join(DATA_DIR, 'quiz.json');
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || ''; // bv. https://quiz.example.nl (optioneel)
@@ -273,5 +273,5 @@ function handle(ws, m) {
 setInterval(() => { wss.clients.forEach((ws) => { if (!ws.alive) return ws.terminate(); ws.alive = false; ws.ping(); }); }, 30000);
 setInterval(() => { for (const g of games.values()) if (Date.now() - g.last > 6 * 3600 * 1000) closeGame(g); }, 15 * 60 * 1000);
 
-server.listen(PORT, () => console.log('Quizzy draait op http://localhost:' + PORT));
+server.listen(PORT, '0.0.0.0', () => console.log('Quizzy draait op http://localhost:' + PORT));
 module.exports = { server, wss };
