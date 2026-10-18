@@ -2,7 +2,7 @@
 
 // Lightweight wrapper around the existing Quizzy server.
 // It keeps the original game/server logic untouched and enhances the served UI
-// with QR sharing plus locally generated sound effects and background music.
+// with QR sharing, locally generated sound effects/music, and a video theme.
 const fs = require('fs');
 const path = require('path');
 
@@ -10,38 +10,99 @@ const originalReadFile = fs.readFile.bind(fs);
 const originalReadFileSync = fs.readFileSync.bind(fs);
 const indexPath = path.join(__dirname, 'public', 'index.html');
 const qrPath = path.join(__dirname, 'public', 'quiz-qr.svg');
+const backgroundPath = path.join(__dirname, 'public', 'background.mp4');
 
 let qrDataUri = '';
+let backgroundDataUri = '';
 try {
   const svg = originalReadFileSync(qrPath, 'utf8');
   qrDataUri = 'data:image/svg+xml;base64,' + Buffer.from(svg, 'utf8').toString('base64');
 } catch (e) {
   console.warn('QR-code kon niet worden geladen:', e.message);
 }
+try {
+  const video = originalReadFileSync(backgroundPath);
+  backgroundDataUri = 'data:video/mp4;base64,' + video.toString('base64');
+} catch (e) {
+  console.warn('Achtergrondvideo kon niet worden geladen:', e.message);
+}
 
 const enhancementCss = `
 <style id="quizzy-enhancements-css">
+:root{
+  --bg:#070914;
+  --surface:rgba(10,12,23,.80);
+  --text:#fff7e9;
+  --muted:#d8c8b2;
+  --border:rgba(255,188,92,.28);
+  --accent:#f2a33a;
+  --accent-text:#1b0e05;
+  --ok:#58bd78;
+  --bad:#ef6b5b;
+  --c0:#c64b3d;
+  --c1:#4f6d9b;
+  --c2:#c99035;
+  --c3:#4e8b61;
+  color-scheme:dark;
+}
+html,body{min-height:100%;background:#070914!important}
+body{position:relative;overflow-x:hidden}
+.qz-bg-video{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;object-position:center center;z-index:0;pointer-events:none;filter:saturate(.92) contrast(1.05) brightness(.84)}
+.qz-bg-shade{position:fixed;inset:0;z-index:0;pointer-events:none;background:linear-gradient(180deg,rgba(4,5,13,.60) 0%,rgba(7,7,15,.26) 38%,rgba(11,7,10,.48) 72%,rgba(5,6,12,.78) 100%)}
+.wrap{position:relative;z-index:1}
+header.top{padding:10px 12px;border-radius:14px;background:linear-gradient(90deg,rgba(8,9,18,.72),rgba(24,13,13,.40));border:1px solid rgba(255,185,82,.14);backdrop-filter:blur(8px)}
+header.top .logo{filter:drop-shadow(0 0 12px rgba(242,163,58,.45))}
+header.top h1{color:#fff6e7;text-shadow:0 2px 18px rgba(0,0,0,.75)}
+header.top .sub{color:#e7cfad}
+.card,.qcard{background:linear-gradient(145deg,rgba(11,13,24,.88),rgba(24,15,18,.76));border-color:rgba(255,190,94,.24);box-shadow:0 18px 55px rgba(0,0,0,.30);backdrop-filter:blur(12px)}
+input,textarea,select{background:rgba(4,6,14,.72);border-color:rgba(255,190,94,.24);color:#fff7e9}
+input::placeholder,textarea::placeholder{color:#a99a89}
+.btn{background:linear-gradient(135deg,#f5b44d,#df7b28);color:#211006;box-shadow:0 8px 24px rgba(216,111,26,.22)}
+.btn:hover{filter:brightness(1.06)}
+.btn.sec{background:rgba(9,11,20,.55);color:#f8ead7;border-color:rgba(255,190,94,.32);box-shadow:none}
+.pin{color:#ffd27b;text-shadow:0 0 30px rgba(242,163,58,.32)}
+.qtext{color:#fff8ed;text-shadow:0 2px 18px rgba(0,0,0,.55)}
+.tbar{background:rgba(255,255,255,.12)}
+.tbar>i{background:linear-gradient(90deg,#f2a33a,#ffd27b)}
+.chip{background:rgba(4,6,14,.58);border-color:rgba(255,190,94,.22)}
+.tile{box-shadow:0 10px 26px rgba(0,0,0,.22)}
 .qz-share-card{text-align:center;overflow:hidden}
-.qz-share-title{font-size:1.08rem;font-weight:800;margin:0 0 4px}
+.qz-share-title{font-size:1.08rem;font-weight:800;margin:0 0 4px;color:#ffd27b}
 .qz-share-copy{margin:0 auto 12px;max-width:34rem}
-.qz-qr{display:block;width:min(210px,62vw);height:auto;margin:12px auto;background:#fff;border-radius:16px;padding:12px;border:1px solid var(--border);box-sizing:border-box}
-.qz-url{display:inline-block;max-width:100%;overflow-wrap:anywhere;font-weight:700;color:var(--accent);text-decoration:none}
+.qz-qr{display:block;width:min(210px,62vw);height:auto;margin:12px auto;background:#fff;border-radius:16px;padding:12px;border:1px solid rgba(255,190,94,.32);box-sizing:border-box;box-shadow:0 12px 36px rgba(0,0,0,.34)}
+.qz-url{display:inline-block;max-width:100%;overflow-wrap:anywhere;font-weight:700;color:#ffd27b;text-decoration:none}
 .qz-lobby-join{display:grid;grid-template-columns:minmax(0,1fr) minmax(150px,220px);gap:18px;align-items:center}
 .qz-lobby-join .qz-qr{width:100%;margin:0}
 .qz-lobby-pin{text-align:center}
-.qz-audio{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:50;border:1px solid var(--border);border-radius:999px;padding:10px 14px;background:var(--surface);color:var(--text);font:inherit;font-weight:800;box-shadow:0 8px 28px rgba(0,0,0,.16);cursor:pointer}
-.qz-audio[aria-pressed="true"]{background:var(--accent);color:var(--accent-text);border-color:transparent}
-@media (max-width:580px){.qz-lobby-join{grid-template-columns:1fr}.qz-lobby-join .qz-qr{width:min(190px,58vw);margin:0 auto}.qz-audio{right:10px;bottom:10px;font-size:.85rem}}
+.qz-audio{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:50;border:1px solid rgba(255,190,94,.30);border-radius:999px;padding:10px 14px;background:rgba(8,10,18,.84);color:#fff4df;font:inherit;font-weight:800;box-shadow:0 8px 28px rgba(0,0,0,.30);cursor:pointer;backdrop-filter:blur(10px)}
+.qz-audio[aria-pressed="true"]{background:linear-gradient(135deg,#f5b44d,#df7b28);color:#211006;border-color:transparent}
+@media (max-width:580px){
+  .qz-bg-video{object-position:center bottom}
+  .qz-lobby-join{grid-template-columns:1fr}
+  .qz-lobby-join .qz-qr{width:min(190px,58vw);margin:0 auto}
+  .qz-audio{right:10px;bottom:10px;font-size:.85rem}
+}
+@media (prefers-reduced-motion:reduce){.qz-bg-video{display:none}}
 </style>`;
 
-function enhancementScript(qrUri) {
+function enhancementScript(qrUri, bgUri) {
   return `
 <script id="quizzy-enhancements-js">
 (function(){
 'use strict';
 var QUIZ_URL='https://quiz-ou4d.onrender.com/';
 var QR_URI=${JSON.stringify(qrUri)};
+var BG_URI=${JSON.stringify(bgUri)};
 var audioOn=false,ctx=null,musicTimer=null,musicStep=0,lastSignal='';
+
+function mountBackground(){
+  if(!BG_URI||document.getElementById('qz-bg-video'))return;
+  var v=document.createElement('video');
+  v.id='qz-bg-video';v.className='qz-bg-video';v.src=BG_URI;v.autoplay=true;v.loop=true;v.muted=true;v.playsInline=true;v.setAttribute('aria-hidden','true');v.setAttribute('tabindex','-1');
+  var shade=document.createElement('div');shade.className='qz-bg-shade';shade.setAttribute('aria-hidden','true');
+  document.body.insertBefore(v,document.body.firstChild);document.body.insertBefore(shade,v.nextSibling);
+  var p=v.play();if(p&&p.catch)p.catch(function(){});
+}
 
 function shareCard(compact){
   var wrap=document.createElement('div');
@@ -66,8 +127,7 @@ function decorate(){
     var card=pin.closest('.card');
     if(card){
       var existing=card.querySelector('.muted'); if(existing)existing.textContent='Pincode om mee te doen';
-      var grid=shareCard(true);
-      card.appendChild(grid);
+      card.appendChild(shareCard(true));
     }
   }
   detectSignals(app.innerText||'');
@@ -94,12 +154,7 @@ function sfx(kind){
 }
 
 // Soft original gospel-inspired instrumental: warm sustained triads and a gentle bass pulse.
-var chords=[
-  [261.63,329.63,392.00], // C
-  [220.00,261.63,329.63], // Am
-  [174.61,220.00,261.63], // F
-  [196.00,246.94,293.66]  // G
-];
+var chords=[[261.63,329.63,392.00],[220.00,261.63,329.63],[174.61,220.00,261.63],[196.00,246.94,293.66]];
 function playChord(){
   if(!audioOn||!ensureAudio())return;
   var ch=chords[musicStep%chords.length],now=ctx.currentTime;
@@ -108,43 +163,37 @@ function playChord(){
     g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(.014,now+.45);g.gain.setValueAtTime(.014,now+2.7);g.gain.exponentialRampToValueAtTime(.0001,now+3.6);
     o.connect(g);g.connect(ctx.destination);o.start(now);o.stop(now+3.7);
   });
-  tone(ch[0]/2,.55,.018,'sine',.05); tone(ch[0]/2,.45,.012,'sine',1.85);
-  musicStep++;
+  tone(ch[0]/2,.55,.018,'sine',.05); tone(ch[0]/2,.45,.012,'sine',1.85);musicStep++;
 }
 function startMusic(){if(musicTimer)return;playChord();musicTimer=setInterval(playChord,3600);}
 function stopMusic(){if(musicTimer){clearInterval(musicTimer);musicTimer=null;}}
+function storeAudio(){try{localStorage.setItem('qz_audio',audioOn?'1':'0');}catch(e){}}
+function restoreAudio(){try{return localStorage.getItem('qz_audio')==='1';}catch(e){return false;}}
 function setAudio(on){
   audioOn=on;storeAudio();
   var b=document.getElementById('qz-audio');if(b){b.setAttribute('aria-pressed',on?'true':'false');b.textContent=on?'🔊 Muziek & geluid':'🔇 Muziek & geluid';}
   if(on){ensureAudio();if(ctx&&ctx.state==='suspended')ctx.resume();startMusic();sfx('start');}else stopMusic();
 }
-function storeAudio(){try{localStorage.setItem('qz_audio',audioOn?'1':'0');}catch(e){}}
-function restoreAudio(){try{return localStorage.getItem('qz_audio')==='1';}catch(e){return false;}}
-
 function detectSignals(text){
   var signal='';
   if(text.indexOf('Goed zo!')>=0)signal='good';
   else if(text.indexOf('Helaas, fout')>=0||text.indexOf('Tijd is om')>=0)signal='bad';
   else if(text.indexOf('Einde van de quiz')>=0||text.indexOf('Eindstand')>=0)signal='finish';
   else if(text.indexOf('Vraag ')>=0&&text.indexOf('Beantwoord:')>=0)signal='start';
-  if(signal&&signal!==lastSignal){lastSignal=signal;sfx(signal);}
-  if(!signal)lastSignal='';
+  if(signal&&signal!==lastSignal){lastSignal=signal;sfx(signal);}if(!signal)lastSignal='';
 }
 
+mountBackground();
 var audioBtn=document.createElement('button');audioBtn.id='qz-audio';audioBtn.className='qz-audio';audioBtn.type='button';audioBtn.setAttribute('aria-pressed','false');audioBtn.textContent='🔇 Muziek & geluid';
 audioBtn.addEventListener('click',function(){setAudio(!audioOn);});document.body.appendChild(audioBtn);
-
 document.addEventListener('click',function(e){
-  if(!audioOn)return;
-  var a=e.target.closest&&e.target.closest('[data-act]'); if(!a)return;
-  var act=a.getAttribute('data-act'); if(act==='answer'||act==='join')sfx('answer'); else if(act==='start'||act==='next')sfx('start');
+  if(!audioOn)return;var a=e.target.closest&&e.target.closest('[data-act]');if(!a)return;
+  var act=a.getAttribute('data-act');if(act==='answer'||act==='join')sfx('answer');else if(act==='start'||act==='next')sfx('start');
 },true);
-
 var mo=new MutationObserver(function(){decorate();});
 var app=document.getElementById('app');if(app)mo.observe(app,{childList:true,subtree:true,characterData:true});
 decorate();
 if(restoreAudio()){
-  // Browsers require a user gesture before audio starts; arm it for the first interaction.
   var arm=function(){document.removeEventListener('pointerdown',arm);setAudio(true);};
   document.addEventListener('pointerdown',arm,{once:true});
 }
@@ -164,7 +213,7 @@ fs.readFile = function(file, options, callback) {
       let html = wasBuffer ? data.toString('utf8') : String(data);
       if (!html.includes('quizzy-enhancements-css')) {
         html = html.replace('</head>', enhancementCss + '\n</head>');
-        html = html.replace('</body>', enhancementScript(qrDataUri) + '\n</body>');
+        html = html.replace('</body>', enhancementScript(qrDataUri, backgroundDataUri) + '\n</body>');
       }
       cb(null, wasBuffer ? Buffer.from(html, 'utf8') : html);
     } catch (e) {
